@@ -1,47 +1,40 @@
 pipeline {
-    agent any
-
-    triggers {
-        githubPush() // auto-trigger on GitHub webhook push events
-    }
-
-    environment {
-        IMAGE_NAME = 'ubuntu:latest'
-        CONTAINER_NAME = 'jenkins-ubuntu-container'
+    agent {
+        docker {
+            image 'docker:20.10.21' // Alpine image with Docker CLI
+            args '-v /var/run/docker.sock:/var/run/docker.sock' // Important: mount Docker socket
+        }
     }
 
     stages {
         stage('Pull Docker Image') {
             steps {
-                script {
-                    echo "Pulling Docker image: ${IMAGE_NAME}"
-                    sh "docker pull ${IMAGE_NAME}"
-                }
+                sh 'docker pull ubuntu:latest'
+            }
+        }
+    
+    stage('Check Docker') {
+            steps {
+                sh 'docker --version'
             }
         }
 
         stage('Run Container') {
             steps {
-                script {
-                    echo "Running Docker container: ${CONTAINER_NAME}"
-                    sh """
-                        docker run -dit --name ${CONTAINER_NAME} ${IMAGE_NAME} bash
-                    """
-                }
+                sh 'docker run -dit --name jenkins-ubuntu ubuntu:latest bash'
             }
         }
 
         stage('Container Status') {
             steps {
-                sh "docker ps -a | grep ${CONTAINER_NAME}"
+                sh 'docker ps -a'
             }
         }
     }
 
     post {
         always {
-            echo "Cleaning up..."
-            sh "docker rm -f ${CONTAINER_NAME} || true"
+            sh 'docker rm -f jenkins-ubuntu || true'
         }
     }
 }
