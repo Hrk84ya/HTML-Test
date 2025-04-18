@@ -1,21 +1,21 @@
 pipeline {
     agent {
         docker {
-            image 'docker:20.10.21' // Alpine image with Docker CLI
-            args '-v /var/run/docker.sock:/var/run/docker.sock' // Important: mount Docker socket
+            image 'docker:24.0.6'  // any Docker CLI image
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
     stages {
-        stage('Pull Docker Image') {
-            steps {
-                sh 'docker pull ubuntu:latest'
-            }
-        }
-    
-    stage('Check Docker') {
+        stage('Check Docker CLI') {
             steps {
                 sh 'docker --version'
+            }
+        }
+
+        stage('Pull Ubuntu Image') {
+            steps {
+                sh 'docker pull ubuntu:latest'
             }
         }
 
@@ -25,7 +25,7 @@ pipeline {
             }
         }
 
-        stage('Container Status') {
+        stage('List Containers') {
             steps {
                 sh 'docker ps -a'
             }
