@@ -2,59 +2,46 @@ pipeline {
     agent any
 
     triggers {
-        pollSCM('H/1 * * * *') 
+        githubPush() // auto-trigger on GitHub webhook push events
     }
 
     environment {
-        DEPLOY_PORT = '82'
-        IMAGE_NAME = 'my-website'
-        CONTAINER_NAME = 'my-website-container'
+        IMAGE_NAME = 'ubuntu:latest'
+        CONTAINER_NAME = 'jenkins-ubuntu-container'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Pull Docker Image') {
             steps {
-                checkout scm
                 script {
-                    echo "Branch: ${env.BRANCH_NAME}"
+                    echo "Pulling Docker image: ${IMAGE_NAME}"
+                    sh "docker pull ${IMAGE_NAME}"
                 }
             }
         }
 
-        stage('Build') {
-            when {
-                anyOf {
-                    branch 'main'
-                    branch 'develop'
-                }
-            }
+        stage('Run Container') {
             steps {
-                echo "Building the project from ${env.BRANCH_NAME} branch..."
-                sh 'echo Building project...'
+                script {
+                    echo "Running Docker container: ${CONTAINER_NAME}"
+                    sh """
+                        docker run -dit --name ${CONTAINER_NAME} ${IMAGE_NAME} bash
+                    """
+                }
             }
         }
 
-        stage('Publish') {
-            when {
-                branch 'main'
-            }
+        stage('Container Status') {
             steps {
-                echo "Publishing website from main branch on port ${env.DEPLOY_PORT}..."
-                sh '''
-                    docker build -t ${IMAGE_NAME} .
-                    docker rm -f ${CONTAINER_NAME} || true
-                    docker run -d -p ${DEPLOY_PORT}:80 --name ${CONTAINER_NAME} ${IMAGE_NAME}
-                '''
+                sh "docker ps -a | grep ${CONTAINER_NAME}"
             }
         }
     }
 
     post {
-        success {
-            echo "Pipeline for ${env.BRANCH_NAME} completed successfully."
-        }
-        failure {
-            echo "Pipeline for ${env.BRANCH_NAME} failed."
+        always {
+            echo "Cleaning up..."
+            sh "docker rm -f ${CONTAINER_NAME} || true"
         }
     }
 }
